@@ -1,5 +1,6 @@
 import os
 import random
+import argparse  # Import argparse for command-line arguments
 
 def remove_ids_from_file(file_path, percentage=None, input_ids_file=None):
     """
@@ -33,8 +34,6 @@ def remove_ids_from_file(file_path, percentage=None, input_ids_file=None):
         file.write('\n'.join(remaining_ids) + '\n')
 
     return removed_ids
-import os
-import shutil
 
 def update_lattice_file(atom_file, removed_ids):
     # Assuming the input file is in the 'trigger' folder
@@ -116,21 +115,33 @@ def update_lattice_file(atom_file, removed_ids):
     os.remove(original_file)
 
 def main():
-    # Example usage: Define file paths and call the functions
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="Remove a percentage of IDs from the id.txt file or remove specific IDs listed in a file.")
+    parser.add_argument("input", type=str, help="The percentage of IDs to remove or a file containing IDs to remove.")
+    parser.add_argument("--percentage", type=int, help="Percentage of IDs to remove (if a file is not provided).")
+    
+    args = parser.parse_args()
 
     # Define the input file paths
     id_file = "id.txt"  # Path to the file containing IDs (id.txt)
     lattice_file = "my_lattice_prep.data"  # Path to the lattice data file in the trigger folder
 
-    # Percentage of IDs to remove (e.g., 10% of IDs to remove)
-    percentage_to_remove = 10  # Adjust this as needed
+    removed_ids = []
 
-    # First, remove IDs from the id.txt file (you can also use a separate file of IDs to remove)
-    removed_ids = remove_ids_from_file(id_file, percentage=percentage_to_remove)
+    # If the input is a file path, read IDs from the file
+    if os.path.isfile(args.input):
+        input_ids_file = args.input
+        removed_ids = remove_ids_from_file(id_file, input_ids_file=input_ids_file)
+
+    # If the input is a percentage, use the percentage to remove IDs
+    elif args.percentage is not None:
+        percentage_to_remove = args.percentage
+        removed_ids = remove_ids_from_file(id_file, percentage=percentage_to_remove)
+    else:
+        raise ValueError("You must provide either a percentage or a file containing IDs to remove.")
 
     # Now, update the lattice file by removing atoms from the lattice data file
     update_lattice_file(lattice_file, [int(id) for id in removed_ids])
-
 
 if __name__ == "__main__":
     main()
