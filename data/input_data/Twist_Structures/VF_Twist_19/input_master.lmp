@@ -1,0 +1,67 @@
+
+# Mugil, 2023
+
+variable atom_file string my_lattice_prep.data
+
+# ---------- Initialize Simulation ---------------------
+clear
+units metal
+dimension 3
+boundary p p p
+atom_style atomic
+read_data ${atom_file}
+
+
+# ---------- Define Interatomic Potential --------------------- 
+pair_style	eam/fs
+pair_coeff * * FeH_Wen.eam.fs Fe H
+mass            2       1.008
+mass            1       55.845
+neighbor        2.0     bin 
+neigh_modify 	every 	1 delay 0 check yes
+#-------------------------------------------------
+compute csym all centro/atom bcc
+compute eng all pe/atom 
+compute eatoms all reduce sum c_eng 
+#--------------------------------------------------------------
+
+
+#Add_group_id
+
+delete_atoms group 1 compress yes # delete atoms belong to 1 group
+
+
+
+
+
+
+
+
+
+
+reset_timestep	0
+fix 1 all box/relax y 0.0 z 0.0 vmax 0.001
+thermo 10
+thermo_style custom step pe lx ly lz press pxx pyy pzz c_eatoms
+min_style cg
+minimize 1e-24 1e-23 50000 10000
+
+
+
+#--------------log.out--------------------------------
+
+variable natoms equal "count(all)" 
+variable teng equal "c_eatoms"
+variable length equal "lx"
+variable ecoh equal "v_teng/v_natoms"
+print "Total energy (eV) = ${teng};"
+print "Number of atoms = ${natoms};"
+print "Lattice constant (Angstoms) = ${length};"
+print "Cohesive energy (eV) = ${ecoh};"
+
+print "config_V3_2:${teng}" file Tot_e_2.data
+
+
+write_data  GB_H36_1V.data
+
+print "All done!"
