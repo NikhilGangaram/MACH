@@ -35,12 +35,13 @@ train_data = TensorDataset(flattened_data, labels)
 train_loader = DataLoader(train_data, batch_size=4, shuffle=True)
 
 # Initialize the model (choose between basic or TFN), loss function, and optimizer
-model = LinearModel() # TFNModel()
+model = LinearModel()
+# model = TFN_Tetris_Model(layer_dims=[1, 4, 4, 4], rbf_low=0.0, rbf_high=3.5, rbf_count=4, num_classes=8)
 criterion = nn.CrossEntropyLoss()  # Multi-class classification loss
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
-# Training loop (100 epochs)
-for epoch in range(100):
+# Training loop (1000 epochs)
+for epoch in range(1000):
     model.train()
     running_loss = 0.0
     correct_preds = 0
@@ -68,8 +69,8 @@ for epoch in range(100):
     epoch_loss = running_loss / len(train_loader)
     epoch_accuracy = 100 * correct_preds / total_preds
 
-    # Print only every 10th epoch
-    if (epoch + 1) % 10 == 0:
+    # Print only every 100th epoch
+    if (epoch + 1) % 100 == 0:
         print(f"Epoch {epoch+1}/{100}, Loss: {epoch_loss:.4f}, Accuracy: {epoch_accuracy:.2f}%")
 
 
