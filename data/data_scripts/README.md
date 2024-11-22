@@ -99,18 +99,19 @@ This Python script automates the process of setting up and running multiple LAMM
    - The formation energy for each atom is stored in a dictionary (`dict_final_result`).
    - The results are saved in an Excel file (`formation_energy.xlsx`) and the atom with the lowest formation energy is saved to `lowest_energy_atom.txt`.
 
-## Example Workflow
-
-1. The script reads the list of atom IDs from `id.txt`.
-2. For each atom, it creates a simulation folder, copies necessary files from `trigger/`, and prepares the input file (`inp.lmp`).
-3. It runs the LAMMPS simulation for each atom.
-4. Once the simulation finishes, the script reads the total energy from `Tot_e_2.data` and calculates the formation energy for each atom.
-5. The formation energies are stored in an Excel file (`formation_energy.xlsx`).
-6. The atom with the lowest formation energy is recorded in `lowest_energy_atom.txt`.
-
 ## Notes
 
 - The script uses the `qsub` command to submit the LAMMPS simulation jobs, which implies that it's intended to run in a job scheduler environment (e.g., HPC cluster with PBS/Torque).
 - Ensure that the `trigger/` folder contains the necessary files for the LAMMPS simulations and that `input_master.lmp` is properly formatted.
 - The script automatically cleans up temporary files (`Tot_e_2.data`, `inp.lmp`) after processing each atom.
 
+
+# Example Data Collection Workflow 
+
+1. An example of the file structure for data collection is the `examples/VF_Tilt_3/` folder. Note that `vf.py` requires the list of atom IDs from `id.txt`.
+2. Thus, if you would like to augment the data using `inflate_vacancy.py`, you must run this first, following the documentation above.
+3. Then, you must run the `generate_id.py` script before running `vf.py` since you need to generate `id.txt`. 
+4. For each atom, `vf.py` creates a simulation folder, copies necessary files from `trigger/`, and prepares the input file (`inp.lmp`).
+5. It runs the LAMMPS simulation for each atom.
+6. Once the simulation finishes, the script reads the total energy from `Tot_e_2.data` and calculates the formation energy for each atom.
+7. The formation energies are stored in an Excel file (`formation_energy.xlsx`). The atom with the lowest formation energy is recorded in `lowest_energy_atom.txt`.
