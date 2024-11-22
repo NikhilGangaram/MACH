@@ -33,8 +33,6 @@ def remove_ids_from_file(file_path, percentage=None, input_ids_file=None):
         file.write('\n'.join(remaining_ids) + '\n')
 
     return removed_ids
-import os
-import shutil
 
 def update_lattice_file(atom_file, removed_ids):
     # Assuming the input file is in the 'trigger' folder
