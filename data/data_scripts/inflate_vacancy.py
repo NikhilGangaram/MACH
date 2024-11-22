@@ -134,3 +134,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
+# PYTHONBUFFERED=1 nohup python3 vf.py > output.log 2?&1 & 
