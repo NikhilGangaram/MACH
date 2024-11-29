@@ -1,10 +1,5 @@
-import matplotlib
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.animation as anim
 import torch 
-import random
-from math import pi, sqrt
 
 # modified import statements to access TFN-torch implementation 
 import sys
