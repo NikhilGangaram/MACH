@@ -1,11 +1,10 @@
 import numpy as np
-import torch 
+import torch
 import torch.optim as optim
-import pandas as pd 
-
-# Modified import statements to access TFN-torch implementation
+import pandas as pd
 import sys
 import os
+
 sys.path.append(os.path.abspath('../../models/'))
 import tensorfieldnetworks.layers as layers
 import tensorfieldnetworks.utils as utils
@@ -133,15 +132,28 @@ class EGNN(torch.nn.Module):
         
         return self.readout(input_tensor_list[0][0])
 
-# Instantiate the model and move it to the device (GPU/CPU)
-model = EGNN((number_of_neighbors+1),num_outputs=1).to(device)
+# Define the pre-trained weights path (set it to None if not loading pre-trained weights)
+pre_trained_weights_path = None  
 
+# Instantiate the model and move it to the device (GPU/CPU)
+model = EGNN((number_of_neighbors+1), num_outputs=1).to(device)
+
+# Load pre-trained weights if the path is provided
+if pre_trained_weights_path:
+    if os.path.exists(pre_trained_weights_path):
+        print(f"Loading pre-trained weights from {pre_trained_weights_path}...")
+        model.load_state_dict(torch.load(pre_trained_weights_path))
+        print("Pre-trained weights loaded successfully.")
+    else:
+        print(f"Warning: The pre-trained weights file does not exist at {pre_trained_weights_path}. Continuing without loading weights.")
+        
 # Define loss function (MSE) and optimizer (Adam)
 criterion = torch.nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 # Training loop
 epochs = 2000
+checkpoint_interval = epochs // 10  # Save model every 1/10th of the total epochs
 for epoch in range(epochs):
     running_loss = 0.0
     for i, (inputs, label) in enumerate(zip(inputs_tensor, labels_tensor)):
@@ -166,6 +178,12 @@ for epoch in range(epochs):
 
     # Print the loss every epoch
     print(f'Epoch [{epoch}/{epochs}], Loss: {running_loss/len(inputs_tensor):.4f}')
+    
+    # Save the model every 1/10th of the epochs
+    if (epoch + 1) % checkpoint_interval == 0:
+        checkpoint_path = f"checkpoints/epoch_{epoch+1}.pth"
+        torch.save(model.state_dict(), checkpoint_path)
+        print(f"Model saved at epoch {epoch+1} to {checkpoint_path}")
 
 # Training complete
 print('Finished Training')
