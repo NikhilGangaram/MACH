@@ -26,15 +26,8 @@ To ensure that all dependencies are compatible, create and activate a **conda** 
 ### Install Python Dependencies
 
 Once the environment is activated, install the required dependencies using **pip**:
-
-1. Install essential packages for data analysis and machine learning:
-   - `pip install torch pandas scipy matplotlib`
+   - `pip install torch pandas scipy matplotlib numpy openpyxl`
    
-2. Install the **TensorField-Torch** repository, which provides the implementation for the Tensor Field Network (TFN)-based EGNN model:
-   - `pip install git+https://github.com/semodi/tensorfield-torch.git`
-
-This repository follows a more intuitive approach compared to the original [TensorFieldNetworks](https://github.com/tensorfieldnetworks/tensorfieldnetworks) implementation, as it defines network layers as classes that can be stacked, making the code more modular and easier to follow. We chose this implementation because of its flexibility and clear design, which suited our use case better.
-
 ---
 
 ## Data Collection Workflow
@@ -59,7 +52,7 @@ Once you have the formation energy data from the simulations, you can proceed wi
 
 2. **Prepare Input Features**: For each atom, generate input features for the EGNN, including pairwise atomic distances and radial basis function (RBF) values. These features describe the atomic interactions and will serve as the input to the model.
 
-3. **Define the EGNN Model**: The EGNN model is based on the **TensorField-Torch** implementation. It uses a series of layers, including convolutional and self-interaction layers, to process the atomic data. The model predicts the formation energy of each atom.
+3. **Define the EGNN Model**: The EGNN model is based on the **TensorField-Torch** implementation. It uses a series of layers, including convolutional and self-interaction layers, to process the atomic data. The model predicts the formation energy in the case of a vacancy at a given atomic position. Notably, users can load pre-trained weights to perform rudimentary transfer learning. 
 
 4. **Training the Model**: Once the input features are ready, you can train the EGNN model. The model will learn to predict the formation energies of atoms based on their positions and interactions with other atoms.
 
@@ -69,16 +62,10 @@ Once you have the formation energy data from the simulations, you can proceed wi
 
 1. **TensorField-Torch**:
    - GitHub: [https://github.com/semodi/tensorfield-torch](https://github.com/semodi/tensorfield-torch)
-   - This repository provides a PyTorch implementation of Tensor Field Networks (TFNs), which we use for the EGNN model in this project. The repository defines the layers as classes, making it easy to stack and experiment with different network architectures.
+   - This repository provides a PyTorch implementation of Tensor Field Networks (TFNs), which we use for the EGNN model in this project. The repository defines the layers as classes, making it easy to stack and experiment with different network architectures. Modifications were made to the original implementation found at the linked github repository to enable the use of the CUDA architecture to make use of any available NVidia GPU's. 
 
 2. **TensorFieldNetworks**:
    - GitHub: [https://github.com/tensorfieldnetworks/tensorfieldnetworks](https://github.com/tensorfieldnetworks/tensorfieldnetworks)
    - The original implementation of TFN, which inspired the TensorField-Torch repository. Although we initially considered using this version, we opted for the more flexible PyTorch-based implementation provided by the TensorField-Torch repository due to its modular and class-based design.
 
 ---
-
-## Summary
-
-The MACH repository provides a comprehensive framework for simulating vacancy formation energies and applying machine learning models (like EGNN) to predict these energies based on atomic data. By following the steps outlined in the data collection workflow and training the EGNN model, you can predict vacancy formation energies for atomic lattices efficiently. 
-
-If you have any questions or encounter issues, please feel free to open an issue in the repository or reach out for help.

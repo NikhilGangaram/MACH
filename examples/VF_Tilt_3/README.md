@@ -12,7 +12,7 @@ The `examples/VF_tilt_3/` folder contains the necessary data and scripts for sim
 - `lowest_energy_atom.txt` - A text file that records the atom with the lowest formation energy.
 - `input_master.lmp` - A master LAMMPS input file used for running simulations on individual atoms.
 - `id.txt` - A file containing a list of atom IDs to be used in the simulations.
-  
+
 ## Workflow for Vacancy Formation Energy Simulation
 
 ### 1. **Augment Data (Optional):**
@@ -54,43 +54,17 @@ The `examples/VF_tilt_3/` folder contains the necessary data and scripts for sim
 
 ## Training the EGNN Model
 
-Once you have the formation energy data, you can use the provided code to train a model to predict the formation energy based on the atom positions and their interactions. Below are the steps and key notebook cells involved in the training process.
+Once you have the formation energy data, you can use the provided code to train a model to predict the formation energy based on the atom positions and their interactions.
 
-### 1. **Load the Data (Cell 2):**
-   In the second cell of `train_egnn.ipynb`, the formation energies and atom positions are loaded from the Excel file and the LAMMPS lattice file.
+The training process begins by loading the formation energy data stored in an Excel file. The `formation_energy.xlsx` file contains atom IDs and their corresponding formation energies, which are mapped into a dictionary for easy access during training. 
 
-   - **Formation Energies**: 
-     The script reads the formation energy data from the `formation_energy.xlsx` file and stores it in a dictionary, `formation_energy_dict`.
-   
-   - **Atom Positions**: 
-     The atom positions are extracted from the `trigger/my_lattice_prep.data` file and stored in `atom_positions`.
+Next, the script reads the atomic positions from `trigger/my_lattice_prep.data`, which contains the 3D coordinates of the atoms. These positions are used to calculate the pairwise distances between atoms. The script identifies the nearest neighbors for each atom and prepares input features required by the neural network, which include the pairwise difference matrix, the distance matrix, and Radial Basis Function (RBF) features. These features capture the spatial relationships between atoms, which are crucial for accurately predicting the formation energy given a vacancy at a particular atomic position.
 
-   - **Calculate Pairwise Distances**: 
-     The script calculates the pairwise distances between all atoms and identifies the 15 closest atoms for each atom in the lattice. These distances are used as part of the input features for the model.
+The model used for this task is an Equivariant Graph Neural Network (EGNN). This architecture is designed to handle the symmetries inherent in molecular systems, where atomic positions can undergo rotations, translations, and reflections without changing the physical system's energy. The EGNN consists of several layers that refine the atomic features by passing messages between neighboring atoms. This process allows the model to learn complex relationships between atoms in a material.
 
-### 2. **Prepare Input Data (Cell 3):**
-   The third cell prepares the input data for the model. It generates features such as the radial basis function (RBF) for distances between atoms and their neighbors. This step involves:
-   
-   - **RBF Calculation**: 
-     A Radial Basis Function (RBF) kernel is applied to the pairwise distances between atoms to create the input features for the neural network.
-   
-   - **Input Construction**: 
-     For each atom, the script computes the `rij` (difference matrix), `dij` (distance matrix), and RBF values. These values are stored as input tensors (`inputs_tensor`), and the corresponding formation energies are stored as labels (`labels_tensor`).
+Training the model involves using the Adam optimizer and Mean Squared Error (MSE) loss. The model processes the inputs (atomic positions and features) to compute predictions for the formation energies. The loss function measures the discrepancy between the model’s predictions and the true formation energies, and backpropagation is used to adjust the model parameters to minimize this error.
 
-### 3. **Define EGNN Model (Cell 4):**
-   In the fourth cell, the architecture of the EGNN (Edge-Conditioned Graph Neural Network) model is defined. The model includes layers for interaction between atoms and a readout layer that outputs the predicted formation energy.
-
-   - **Model Architecture**:
-     The model consists of several convolutional layers that operate on the atom positions and distances, followed by a readout layer that averages the node features and outputs the formation energy.
-
-### 4. **Train the EGNN Model (Cell 5):**
-   The final cell trains the EGNN model using the prepared input data. It sets up the loss function (Mean Squared Error) and uses the Adam optimizer to minimize the loss. 
-
-   - **Training Loop**:
-     The model is trained over multiple epochs (2000 in this case), updating the parameters based on the training data. The loss is printed every 100 epochs to monitor the progress.
-
-   - **Final Output**: 
-     The trained model will be able to predict the formation energy for unseen atom positions.
+After training, the model can be used to predict formation energies for new atomic configurations. You can also save the trained model at regular intervals during training, allowing you to resume training or evaluate the model at different stages.
 
 ---
 
