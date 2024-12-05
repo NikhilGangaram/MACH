@@ -32,7 +32,7 @@ class Dense(torch.nn.Linear):
     def forward(self, inputs):
         """
         Args:
-            inputs (dict of torch.Tensor): SchNetPack format dictionary of input tensors.
+            inputs (torch.Tensor): Input tensor.
 
         Returns:
             torch.Tensor: Output of the dense layer.
@@ -51,7 +51,6 @@ class R(nn.Module):
         """ input dimension is the rbf_dimension"""
 
         super(R, self).__init__()
-        #TODO: figure out how to initialize weights
         if hidden_dim is None:
             hidden_dim = input_dim
 
@@ -62,15 +61,11 @@ class R(nn.Module):
                         Dense(hidden_dim, output_dim, bias = True,
             activation = None,  bias_init = lambda x: init.constant_(x,CONSTANT_BIAS)))
 
-
     def forward(self, inputs):
-        #input dim: inputs.size()[-1] (rbf-dimension)
         return self.R_net(inputs)
-
 
 def unit_vectors(v, axis=-1):
     return v / utils.norm_with_epsilon(v, axis=axis, keep_dims=True)
-
 
 def Y_2(rij):
     # rij : [N, N, 3]
@@ -87,7 +82,6 @@ def Y_2(rij):
                        (x**2 - y**2) / (2. * r2)],
                       dim=-1)
     return output
-
 
 class F(nn.Module):
 
@@ -111,20 +105,16 @@ class F(nn.Module):
             self.forward = self.forward_rep
 
     def forward_no_rep(self, rbf_input, rij):
-
         radial = self.radial(rbf_input)
         return radial.unsqueeze(-1)
 
     def forward_rep(self, rbf_input, rij):
-
         radial = self.radial(rbf_input)
         dij = torch.norm(rij, dim=-1)
         condition = (dij < EPSILON).unsqueeze(-1).repeat(1, 1, 1, self.output_dim)
         masked_radial = torch.where(condition, torch.zeros_like(radial),
             radial)
         return self.rep(rij).unsqueeze(-2) * masked_radial.unsqueeze(-1)
-
-
 
 class Filter(nn.Module):
 
@@ -144,24 +134,29 @@ class Filter(nn.Module):
                       weights_initializer=weights_initializer,
                       biases_initializer=biases_initializer)
 
-        self.eijk = utils.get_eijk()
+        # Ensure eijk is on the same device as the model
+        self.register_buffer('eijk', utils.get_eijk())
         self.l_filter = l_filter
         self.l_out = l_out
-
 
         if l_out == 0:
             if l_filter == 0:
                 self.cg = None
                 self.forward = self.forward_00
             elif l_filter == 1:
-                self.cg = torch.eye(3).unsqueeze(0)
+                # Use register_buffer to ensure device consistency
+                self.register_buffer('cg', torch.eye(3).unsqueeze(0))
         elif l_out == 1:
-            self.cg = {1 : torch.eye(3).unsqueeze(-1), 3 : self.eijk}
+            # Use register_buffer for device-consistent tensors
+            self.register_buffer('cg_1', torch.eye(3).unsqueeze(-1))
+            self.register_buffer('cg_3', self.eijk)
+            self.cg = {1: self.cg_1, 3: self.cg_3}
             self.forward = self.forward_1
         elif l_out == 2:
-            self.cg = torch.eye(5).unsqueeze(-1)
+            # Use register_buffer for device-consistent tensors
+            self.register_buffer('cg', torch.eye(5).unsqueeze(-1))
         else:
-            raise ValueError('l2 = {} not implemented'.format(l2))
+            raise ValueError(f'l2 = {l_out} not implemented')
 
     def forward(self, layer_input, rbf_input, rij):
         cg = self.cg
@@ -169,7 +164,7 @@ class Filter(nn.Module):
             layer_input)
 
     def forward_00(self, layer_input, rbf_input, rij):
-        cg = torch.eye(layer_input.size()[-1]).unsqueeze(-2)
+        cg = torch.eye(layer_input.size()[-1]).to(layer_input.device).unsqueeze(-2)
         return torch.einsum('ijk,zabfj,zbfk->zafi', cg, self.F_out(rbf_input, rij),
             layer_input)
 
@@ -177,7 +172,6 @@ class Filter(nn.Module):
         cg = self.cg[layer_input.size()[-1]]
         return torch.einsum('ijk,zabfj,zbfk->zafi', cg, self.F_out(rbf_input, rij),
             layer_input)
-
 
 class Convolution(nn.Module):
 
@@ -196,22 +190,25 @@ class Convolution(nn.Module):
         self.forward = self.forward_build
 
     def forward_build(self, input_tensor_list, rbf, rij):
+        # Ensure the current device is used for new filters
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        
         for key in input_tensor_list:
             for i, tensor in enumerate(input_tensor_list[key]):
                 # L x 0 -> L
-                name = '{}_{}'.format(key,i)
-                self.f00[name] = Filter(0,0,input_dim = self.input_dim,
-                    output_dim = self.output_dim)
+                name = f'{key}_{i}'
+                self.f00[name] = Filter(0,0,input_dim=self.input_dim,
+                    output_dim=self.output_dim).to(device)
 
-                if key is 1:
+                if key == 1:
                     # L x 1 -> 0
-                    self.f10[name] = Filter(1,0,input_dim = self.input_dim,
-                    output_dim = self.output_dim)
+                    self.f10[name] = Filter(1,0,input_dim=self.input_dim,
+                    output_dim=self.output_dim).to(device)
 
-                if key is 0 or key is 1:
+                if key in [0, 1]:
                     # L x 1 -> 1
-                    self.f11[name] = Filter(1,1,input_dim = self.input_dim,
-                    output_dim = self.output_dim)
+                    self.f11[name] = Filter(1,1,input_dim=self.input_dim,
+                    output_dim=self.output_dim).to(device)
 
         self.f00 = torch.nn.ModuleDict(self.f00)
         self.f10 = torch.nn.ModuleDict(self.f10)
@@ -221,23 +218,22 @@ class Convolution(nn.Module):
         return self.forward(input_tensor_list, rbf, rij)
 
     def forward_later(self, input_tensor_list, rbf, rij):
-
         output_tensor_list = {0:[], 1:[]}
         for key in input_tensor_list:
             for i, tensor in enumerate(input_tensor_list[key]):
-                name = '{}_{}'.format(key,i)
+                name = f'{key}_{i}'
                 # L x 0 -> L
                 tensor_out = self.f00[name](tensor,
                                       rbf,
                                       rij)
                 output_tensor_list[key].append(tensor_out)
-                if key is 1:
+                if key == 1:
                     # L x 1 -> 0
                     tensor_out = self.f10[name](tensor,
                                           rbf,
                                           rij)
                     output_tensor_list[0].append(tensor_out)
-                if key is 0 or key is 1:
+                if key in [0, 1]:
                     # L x 1 -> 1
                     tensor_out = self.f11[name](tensor,
                                           rbf,
@@ -249,11 +245,6 @@ class SelfInteractionLayer(nn.Module):
 
     def __init__(self, input_dim, output_dim, bias = False,
             weights_initializer=None, biases_initializer=None):
-        #TODO: weights intializer
-        """
-            input_dim: channel_dimension
-        """
-
         super(SelfInteractionLayer, self).__init__()
         self.input_dim = input_dim
         self.output_dim = output_dim
@@ -261,8 +252,8 @@ class SelfInteractionLayer(nn.Module):
         if bias:
             self.bias = Parameter(torch.Tensor(output_dim))
         else:
-            self.bias = torch.zeros(output_dim)
-            # self.register_parameter('bias', None)
+            # Ensure bias is a tensor on the correct device
+            self.register_buffer('bias', torch.zeros(output_dim))
         self.reset_parameters()
         self.forward = self.first_forward
 
@@ -274,31 +265,24 @@ class SelfInteractionLayer(nn.Module):
     def first_forward(self, layer_input):
         if not layer_input.size()[-2] == self.input_dim:
             self.input_dim = layer_input.size()[-2]
-            self.weight = Parameter(torch.Tensor(self.output_dim, self.input_dim))
+            self.weight = Parameter(torch.Tensor(self.output_dim, self.input_dim).to(layer_input.device))
             self.reset_parameters()
         self.forward = self.later_forward
         return self.forward(layer_input)
 
     def later_forward(self, layer_input):
-        # Size (number of channels) needs to be inferred from input here
+        # Ensure weight and bias are on the same device as the input
+        weight = self.weight.to(layer_input.device)
+        bias = self.bias.to(layer_input.device)
 
         return (torch.einsum('zafi,gf->zaig',
-            layer_input, self.weight) + self.bias).permute(0,1, 3, 2)
-
+            layer_input, weight) + bias).permute(0,1, 3, 2)
 
 class SelfInteraction(nn.Module):
 
     def __init__(self, input_dim, output_dim, weights_initializer=None,
         biases_initializer=None):
-
-        """
-            input_dim: channel_dimension
-        """
         super(SelfInteraction, self).__init__()
-        # self.SI_with_biases = SelfInteractionLayer(input_dim, output_dim, True,
-            # weights_initializer, biases_initializer)
-        # self.SI_without_biases = SelfInteractionLayer(input_dim, output_dim, False,
-            # weights_initializer, biases_initializer)
 
         self.SI = {}
         self.input_dim = input_dim
@@ -309,15 +293,18 @@ class SelfInteraction(nn.Module):
         self.forward = self.forward_init
 
     def forward_init(self, input_tensor_list):
+        # Determine the device from the first available tensor
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         for key in input_tensor_list:
             for i, tensor in enumerate(input_tensor_list[key]):
-                name = '{}_{}'.format(key,i)
-                if key ==0:
+                name = f'{key}_{i}'
+                if key == 0:
                     self.SI[name] = SelfInteractionLayer(self.input_dim, self.output_dim, True,
-                        self.weights_init, self.biases_init)
+                        self.weights_init, self.biases_init).to(device)
                 else:
                     self.SI[name] = SelfInteractionLayer(self.input_dim, self.output_dim, False,
-                        self.weights_init, self.biases_init)
+                        self.weights_init, self.biases_init).to(device)
 
         self.SI = torch.nn.ModuleDict(self.SI)
         self.forward = self.forward_later
@@ -327,28 +314,29 @@ class SelfInteraction(nn.Module):
         output_tensor_list = {0: [], 1: []}
         for key in input_tensor_list:
             for i, tensor in enumerate(input_tensor_list[key]):
-                tensor_out = self.SI['{}_{}'.format(key,i)](tensor)
+                tensor_out = self.SI[f'{key}_{i}'](tensor)
                 output_tensor_list[key].append(tensor_out)
         return output_tensor_list
+
 
 class NonLinearity(nn.Module):
 
     def __init__(self, channels, nonlin=functional.elu, biases_initializer=None):
-
         super(NonLinearity, self).__init__()
         self.biases_initializer = biases_initializer
         self.nonlin = nonlin
         self.channels = channels
         self.biases = {}
         self.forward = self.forward_init
-        # self.biases =  Parameter(torch.Tensor(channels))
-        # self.reset_parameters()
 
     def forward_init(self, input_tensor_list):
+        # Determine the device from the first available tensor
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
         for key in input_tensor_list:
             for i, tensor in enumerate(input_tensor_list[key]):
-                name = '{}_{}'.format(key,i)
-                self.biases[name] = Parameter(torch.Tensor(self.channels))
+                name = f'{key}_{i}'
+                self.biases[name] = Parameter(torch.Tensor(self.channels).to(device))
 
         self.biases = torch.nn.ParameterDict(self.biases)
         self.forward = self.forward_later
@@ -359,16 +347,15 @@ class NonLinearity(nn.Module):
         output_tensor_list = {0: [], 1: []}
         for key in input_tensor_list:
             for i, tensor in enumerate(input_tensor_list[key]):
+                # Ensure biases are on the same device as the tensor
+                biases = self.biases[f'{key}_{i}'].to(tensor.device)
                 tensor_out = utils.rotation_equivariant_nonlinearity(tensor,
                                                                      nonlin=self.nonlin,
-                                                                     biases=self.biases['{}_{}'.format(key,i)])
-#                m = 0 if tensor_out.size()[-1] == 1 else 1
-                # output_tensor_list[m].append(tensor_out)
+                                                                     biases=biases)
                 output_tensor_list[key].append(tensor_out)
         return output_tensor_list
 
     def reset_parameters(self):
-        # init.zeros_(self.biases)
         for key in self.biases:
             init.constant_(self.biases[key], CONSTANT_BIAS)
 
@@ -380,7 +367,7 @@ class Concatenation(nn.Module):
     def forward(self, input_tensor_list):
         output_tensor_list = {0: [], 1: []}
         for key in input_tensor_list:
-            # Concatenate along channel axis
-            # [N, channels, M]
-            output_tensor_list[key].append(torch.cat(input_tensor_list[key], dim=-2))
+            # Concatenate along channel axis, handling empty lists
+            if input_tensor_list[key]:
+                output_tensor_list[key].append(torch.cat(input_tensor_list[key], dim=-2))
         return output_tensor_list
