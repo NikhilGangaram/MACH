@@ -17,8 +17,8 @@ MACH facilitates the calculation of vacancy formation energies for atoms in a la
 
 To ensure that all dependencies are compatible, create and activate a **conda** environment:
 
-1. Create a new environment with Python 3.8:
-   - `conda create --name mach python=3.8`
+1. Create a new environment with Python 3.9:
+   - `conda create --name mach python=3.9`
    
 2. Activate the environment:
    - `conda activate mach`
@@ -66,6 +66,6 @@ Once you have the formation energy data from the simulations, you can proceed wi
 
 2. **TensorFieldNetworks**:
    - GitHub: [https://github.com/tensorfieldnetworks/tensorfieldnetworks](https://github.com/tensorfieldnetworks/tensorfieldnetworks)
-   - The original implementation of TFN, which inspired the TensorField-Torch repository. Although we initially considered using this version, we opted for the more flexible PyTorch-based implementation provided by the TensorField-Torch repository due to its modular and class-based design.
+   - The original implementation of TFN, which inspired the TensorField-Torch repository. Although we initially considered using this version, we opted for the more flexible PyTorch-based implementation provided by the TensorField-Torch repository due to its concise, class-based design.
 
 ---
