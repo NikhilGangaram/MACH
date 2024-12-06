@@ -60,11 +60,9 @@ The training process begins by loading the formation energy data stored in an Ex
 
 Next, the script reads the atomic positions from `trigger/my_lattice_prep.data`, which contains the 3D coordinates of the atoms. These positions are used to calculate the pairwise distances between atoms. The script identifies the nearest neighbors for each atom and prepares input features required by the neural network, which include the pairwise difference matrix, the distance matrix, and Radial Basis Function (RBF) features. These features capture the spatial relationships between atoms, which are crucial for accurately predicting the formation energy given a vacancy at a particular atomic position.
 
-The model used for this task is an Equivariant Graph Neural Network (EGNN). This architecture is designed to handle the symmetries inherent in molecular systems, where atomic positions can undergo rotations, translations, and reflections without changing the physical system's energy. The EGNN consists of several layers that refine the atomic features by passing messages between neighboring atoms. This process allows the model to learn complex relationships between atoms in a material.
+The model used for this task is built using the layers from the TFN implementation. This architecture is designed to handle the symmetries inherent in molecular systems, where atomic positions can undergo rotations, translations, and reflections without changing the physical system's energy. Notably, pre-trained weights can also be loaded to perform rudimentary transfer learning. 
 
-Training the model involves using the Adam optimizer and Mean Squared Error (MSE) loss. The model processes the inputs (atomic positions and features) to compute predictions for the formation energies. The loss function measures the discrepancy between the model’s predictions and the true formation energies, and backpropagation is used to adjust the model parameters to minimize this error.
-
-After training, the model can be used to predict formation energies for new atomic configurations. You can also save the trained model at regular intervals during training, allowing you to resume training or evaluate the model at different stages.
+Training the model involves using the Adam optimizer and Mean Squared Error (MSE) loss. The model processes the inputs (atomic positions and features) to compute predictions for the formation energies. The loss function measures the discrepancy between the model’s predictions and the true formation energies, and backpropagation is used to adjust the model parameters to minimize this error. During the training process, checkpoints of model weights are saved at a frequency of 10 times throughout the training run. 
 
 ---
 
