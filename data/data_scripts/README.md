@@ -13,11 +13,6 @@ This Python script extracts atom IDs from a LAMMPS data file and writes them to 
 - **File**: `id.txt`
 - **Description**: A text file containing the extracted atom IDs, one per line. The file is saved in the same directory as the script.
 
-## Notes
-
-- The script assumes the atom IDs are in the first column of the "Atoms # atomic" section.
-- It skips the header line ("Atoms # atomic") and any empty lines.
-
 # inflate_vacancy.py
 
 This Python script randomly removes a specified percentage of atom IDs from a list and updates a LAMMPS lattice file by removing corresponding atoms.
