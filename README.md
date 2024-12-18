@@ -1,6 +1,6 @@
-# MACH - Matsumoto Atomic Computation Hub
+# MACH - M6 Atomic Computation Hub
 
-Welcome to the Matsumoto Atomic Computation Hub (MACH). This repository provides tools for simulating vacancy formation energies in atomic lattices using LAMMPS simulations and machine learning models, specifically an Edge-Conditioned Graph Neural Network (EGNN).
+Welcome to the M6 Atomic Computation Hub (MACH). This repository provides tools for simulating vacancy formation energies in atomic lattices using LAMMPS simulations and machine learning models, specifically an Edge-Conditioned Graph Neural Network (EGNN).
 
 ## Overview
 
